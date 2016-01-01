@@ -3,7 +3,7 @@ import Blink: js, jsstring, id, callback!
 import Base: position, size, close
 
 export Window, flashframe, shell, progress, title,
-  centre, floating, addblink, loadurl, opentools, closetools, tools,
+  centre, floating, executeJavaScript, addblink, loadurl, opentools, closetools, tools,
   loadhtml, loadfile, css, front
 
 type Window
@@ -106,10 +106,15 @@ function loadurl(win::Window, url)
   wait(cb,5,msg="Loading URL timed out")
 end
 
+function executeJavaScript(win::Window, script::AbstractString)
+  opts = @d(:id=>win.id,:port=>Blink.port,:script=>script)
+  @js_ shell(win) executeJavaScript($opts)
+end
+
 function addblink(win::Window)
   script = open(readall,Pkg.dir("Blink","res","blink.js"))
-  opts = @d(:id=>win.id,:port=>Blink.port,:script=>script)
-  @js_ shell(win) addblink($opts)
+  executeJavaScript(win, "var id = $(win.id), port = $(Blink.port)")
+  executeJavaScript(win, script)
 end
 
 loadfile(win::Window, f) =

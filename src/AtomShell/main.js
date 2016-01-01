@@ -91,14 +91,14 @@ function createWindow(opts) {
 function load(opts) {
   var win = windows[opts.id];
   win.loadURL(opts.url);
-  win.webContents.on("dom-ready", function() {
+  win.webContents.on('dom-ready', function() {
     var result = {type: 'callback', callback: opts.callback, result: opts.callback};
     connection.write(JSON.stringify(result));
   });
+}
 
-function addblink(opts) {
+function executeJavaScript(opts) {
   var win = windows[opts.id];
-  win.webContents.executeJavaScript(`var id = ${opts.id}, port = ${opts.port}`);
   win.webContents.executeJavaScript(`${opts.script}`);
 }
 
