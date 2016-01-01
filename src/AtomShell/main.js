@@ -95,6 +95,11 @@ function load(opts) {
     var result = {type: 'callback', callback: opts.callback, result: opts.callback};
     connection.write(JSON.stringify(result));
   });
+
+function addblink(opts) {
+  var win = windows[opts.id];
+  win.webContents.executeJavaScript(`var id = ${opts.id}, port = ${opts.port}`);
+  win.webContents.executeJavaScript(`${opts.script}`);
 }
 
 function evalwith(obj, code) {
