@@ -31,7 +31,7 @@ active(p::Page) = isdefined(p, :sock) && isopen(p.sock) && isopen(p.sock.socket)
 handlers(p::Page) = p.handlers
 
 function msg(p::Page, m)
-  active(p) || wait(p.cb, 10, msg = "Connection to page timed out")
+  active(p) || wait(p.cb)
   write(p.sock, json(m))
 end
 
@@ -45,6 +45,6 @@ end
 
 include("server.jl")
 
-for r in ["blink.js", "blink.css", "reset.css", "spinner.css"]
-  resource(Pkg.dir("Blink", "res", r))
+@init for r in ["blink.js", "blink.css", "reset.css", "spinner.css"]
+  resource(resolve("Blink", "res", r))
 end

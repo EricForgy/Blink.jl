@@ -1,4 +1,4 @@
-export body!, content!, loadcss!, loadjs!, load!
+export body!, content!, loadcss!, loadjs!, load!, importhtml!
 
 content!(o, sel, html::AbstractString; fade = true) =
   fade ?
@@ -20,6 +20,15 @@ function loadcss!(w, url)
   end
 end
 
+function importhtml!(w, url)
+  @js_ w begin
+    @var link = document.createElement("link")
+    link.rel = "import"
+    link.href = $url
+    document.head.appendChild(link)
+  end
+end
+
 function loadjs!(w, url)
   id, cb = callback!()
   @js_ w begin
@@ -28,7 +37,7 @@ function loadjs!(w, url)
     script.onload = e -> Blink.cb($id)
     document.head.appendChild(script)
   end
-  return wait(cb, 5, msg = "JS load timed out")
+  return wait(cb)
 end
 
 isurl(f) = ismatch(r"^https?://", f)
@@ -43,6 +52,8 @@ function load!(w, file)
     loadjs!(w, file)
   elseif ext == "css"
     loadcss!(w, file)
+  elseif ext == "html"
+    importhtml!(w, file)
   else
     error("Blink: Unsupported file type")
   end

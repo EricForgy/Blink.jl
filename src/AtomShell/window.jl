@@ -19,7 +19,7 @@ const window_defaults = @d(:url => "about:blank",
                            :title => "Julia",
                            "node-integration" => false,
                            "use-content-size" => true,
-                           :icon => Pkg.dir("Blink", "deps", "julia.png"))
+                           :icon => resolve("Blink", "deps", "julia.png"))
 
 function raw_window(a::Shell, opts)
   id,cb = callback!()
@@ -42,11 +42,12 @@ end
 
 Window(args...) = Window(shell(), args...)
 
-function dot(w::Window, code; callback = true)
-  r = js(shell(w), :(withwin($(w.id), $(jsstring(code)))),
-         callback = callback)
-  return callback ? r : w
-end
+dot(a::Electron, win::Integer, code; callback = true) =
+  js(a, :(withwin($(win), $(jsstring(code)))),
+     callback = callback)
+
+dot(w::Window, code; callback = true) =
+  ifelse(callback, dot(shell(w), id(w), code, callback = callback), w)
 
 dot_(args...) = dot(args..., callback = false)
 
@@ -60,8 +61,10 @@ end
 
 # Window management APIs
 
-active(win::Window) =
-  @js shell(win) windows.hasOwnProperty($(win.id))
+active(s::Electron, win::Integer) =
+  @js s windows.hasOwnProperty($win)
+
+active(win::Window) = active(shell(win), id(win))
 
 flashframe(win::Window, on = true) =
   @dot_ win flashFrame($on)

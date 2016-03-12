@@ -5,6 +5,9 @@ hascommand(c) =
 
 spawn_rdr(cmd) = spawn(cmd, Base.spawn_opts_inherit()...)
 
+resolve(pkg, path...) =
+  joinpath(Base.find_in_path(pkg, nothing), "..","..", path...) |> normpath
+
 # node-inspector
 
 _inspector = nothing
@@ -26,20 +29,26 @@ end
 
 import Base: Process, TCPSocket
 
-export Shell
+export Electron
 
-type Shell
+type Electron <: Shell
   proc::Process
   sock::TCPSocket
   handlers::Dict{ASCIIString, Any}
 end
 
-Shell(proc, sock) = Shell(proc, sock, Dict())
+Electron(proc, sock) = Electron(proc, sock, Dict())
 
-@osx_only     const atom = Pkg.dir("Blink", "deps/Julia.app/Contents/MacOS/Electron")
-@linux_only   const atom = Pkg.dir("Blink", "deps/atom/electron")
-@windows_only const atom = Pkg.dir("Blink", "deps", "atom", "electron.exe")
-const mainjs = Pkg.dir("Blink", "src", "AtomShell", "main.js")
+@osx_only     const _electron = resolve("Blink", "deps/Julia.app/Contents/MacOS/Electron")
+@linux_only   const _electron = resolve("Blink", "deps/atom/electron")
+@windows_only const _electron = resolve("Blink", "deps", "atom", "electron.exe")
+const mainjs = resolve("Blink", "src", "AtomShell", "main.js")
+
+function electron()
+  path = get(ENV, "ELECTRON_PATH", _electron)
+  isfile(path) || error("Cannot find Electron. Try `AtomShell.install()`.")
+  return path
+end
 
 port() = rand(2_000:10_000)
 
@@ -55,12 +64,13 @@ function try_connect(args...; interval = 0.01, attempts = 100)
 end
 
 function init(; debug = false)
+  electron() # Check path exists
   p, dp = port(), port()
   debug && inspector(dp)
   dbg = debug ? "--debug=$dp" : []
-  proc = (debug ? spawn_rdr : spawn)(`$atom $dbg $mainjs port $p`)
+  proc = (debug ? spawn_rdr : spawn)(`$(electron()) $dbg $mainjs port $p`)
   conn = try_connect(ip"127.0.0.1", p)
-  shell = Shell(proc, conn)
+  shell = Electron(proc, conn)
   initcbs(shell)
   return shell
 end
@@ -69,9 +79,9 @@ end
 
 import ..Blink: msg, enable_callbacks!, handlers, handle_message, active
 
-msg(shell::Shell, m) = (JSON.print(shell.sock, m); println(shell.sock))
+msg(shell::Electron, m) = (JSON.print(shell.sock, m); println(shell.sock))
 
-handlers(shell::Shell) = shell.handlers
+handlers(shell::Electron) = shell.handlers
 
 function initcbs(shell)
   enable_callbacks!(shell)
@@ -88,13 +98,11 @@ import Base: quit
 
 export active
 
-active(shell::Shell) = process_running(shell.proc)
+active(shell::Electron) = process_running(shell.proc)
 
-quit(shell::Shell) = close(shell.sock)
+quit(shell::Electron) = close(shell.sock)
 
 # Default process
-
-_shell = nothing
 
 function shell(; debug = false)
   global _shell
